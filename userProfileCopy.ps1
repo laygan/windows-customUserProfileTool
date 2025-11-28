@@ -5,7 +5,7 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 }
 
 Set-Variable -Name regExportPath -Value C:\copyUserProfile
-Set-Variable -Name templateUserProfile -Value C:\Users\利用者テンプレート
+Set-Variable -Name templateUserProfile -Value C:\Users\template
 
 [string[][]]$regEnrtyDatas = @()
 
@@ -98,5 +98,6 @@ try {
 
 Write-Host "レジストリハイブセーブ..."
 reg.exe unload HKU\def
+
 
 Read-Host "処理が完了しました。終了するにはEnterキーを押してください..."
