@@ -1,7 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("Administrators")) { 
-  Write-Error "管理者でPowershellを再起動して、再度実行してください。`r`nなお、再度以下コマンドを実行する必要があります。`r`n  Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned"
+  Write-Error "管理者でPowershellを再起動して、再度実行してください。`r`nなお、再度以下コマンドを実行する必要があります。`r`n  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Unrestricted"
 }
 
 Set-Variable -Name regExportPath -Value C:\copyUserProfile
@@ -101,3 +101,4 @@ reg.exe unload HKU\def
 
 
 Read-Host "処理が完了しました。終了するにはEnterキーを押してください..."
+
