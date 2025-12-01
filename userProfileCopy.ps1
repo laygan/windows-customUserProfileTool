@@ -65,7 +65,6 @@ Write-Host "ユーザープロファイル基本ファイルのコピーが完�
 
 Write-Host "テンプレートユーザレジストリハイブの展開..."
 $processId = Start-Process -FilePath "reg.exe" -ArgumentList "load HKU\def C:\Users\Default\NTUSER.DAT" -PassThru
-reg.exe load HKU\def C:\Users\Default\NTUSER.DAT
 
 # Write-Debug "レジストリバックアップ"
 # foreach( $item in $regEnrtyDatas ) {
@@ -101,4 +100,5 @@ reg.exe unload HKU\def
 
 
 Read-Host "処理が完了しました。終了するにはEnterキーを押してください..."
+
 
