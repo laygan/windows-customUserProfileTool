@@ -1,4 +1,5 @@
-﻿$ErrorActionPreference = 'Stop'
+﻿# $DebugPreference = 'inquire'
+$ErrorActionPreference = 'Stop'
 
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("Administrators")) { 
   Write-Error "管理者でPowershellを再起動して、再度実行してください。`r`nなお、再度以下コマンドを実行する必要があります。`r`n  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Unrestricted"
@@ -57,12 +58,21 @@ Write-Host "ユーザープロファイル基本ファイルのコピー..."
 Copy-Item -Recurse $templateUserProfile "C:\Users\Default" -ErrorAction SilentlyContinue
 Write-Host "ユーザープロファイル基本ファイルのコピーが完了しました。"
 
-Write-Host "テンプレートユーザレジストリハイブの展開..."
-$processId = Start-Process -FilePath "reg.exe" -ArgumentList "load HKU\def C:\Users\Default\NTUSER.DAT"
+Write-Host "テンプレートユーザレジストリハイブのロード..."
+$process = Start-Process -FilePath "reg.exe" -ArgumentList "load HKU\def C:\Users\Default\NTUSER.DAT" -Wait -NoNewWindow -PassThru
+if ($process.ExitCode -ne 0) {
+  Write-Error "テンプレートユーザレジストリハイブのロードに失敗しました。"
+}
 
+Write-Host "PSDriveの確認と作成"
+if (! (Get-PSDrive HKU -ErrorAction SilentlyContinue)) {
+  New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS
+} else {
+  Write-Debug "PSDrive HKUはすでに存在します。"
+}
 
 Write-Host "レジストリ削除..."
-# New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS
+$regErr = 0
 foreach( $item in $regEnrtyDatas ) {
   [String]$regPath = "HKU:" + $item[0] + "*"
 
@@ -70,19 +80,20 @@ foreach( $item in $regEnrtyDatas ) {
     # Write-Debug "Remove-Item -Path $($regPath) -Recurse"
     Remove-Item -Path $regPath -Recurse
   } catch {
-    Write-Debug "Remove-Item -Path $($regPath) -Recurse\r\n$($_.Exception.Message)"
+    Write-Debug "Remove-Item -Path $($regPath) -Recurse`r`n$($_.Exception.Message)"
+    $regErr++
   }
 }
 
-try {
-  Stop-Process -Id $processId
-} catch {
-  Write-Debug $_.Exception
+if ( $regErr -eq $regEnrtyDatas.Length ) {
+  Write-Error "レジストリ削除に失敗しました。"
 }
 
-Write-Host "レジストリハイブセーブ..."
-reg.exe unload HKU\def
-
+Write-Host "レジストリハイブアンロード..."
+do {
+  Start-Sleep -Milliseconds 100
+  $process = Start-Process -FilePath "reg.exe" -ArgumentList "unload HKU\def" -Wait -NoNewWindow -PassThru
+} while ($process.ExitCode -ne 0)
 
 Read-Host "処理が完了しました。終了するにはEnterキーを押してください..."
 
