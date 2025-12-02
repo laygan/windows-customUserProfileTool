@@ -4,7 +4,6 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
   Write-Error "管理者でPowershellを再起動して、再度実行してください。`r`nなお、再度以下コマンドを実行する必要があります。`r`n  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Unrestricted"
 }
 
-Set-Variable -Name regExportPath -Value C:\copyUserProfile
 Set-Variable -Name templateUserProfile -Value C:\Users\template
 
 [string[][]]$regEnrtyDatas = @()
@@ -58,23 +57,9 @@ Write-Host "ユーザープロファイル基本ファイルのコピー..."
 Copy-Item -Recurse $templateUserProfile "C:\Users\Default" -ErrorAction SilentlyContinue
 Write-Host "ユーザープロファイル基本ファイルのコピーが完了しました。"
 
-# Write-Debug "レジストリバックアップのフォルダ作成"
-# if (! (Test-Path -Path $regExportPath) ) {
-#   New-Item -ItemType Direory -Path $regExportPath
-# }
-
 Write-Host "テンプレートユーザレジストリハイブの展開..."
-$processId = Start-Process -FilePath "reg.exe" -ArgumentList "load HKU\def C:\Users\Default\NTUSER.DAT" -PassThru
+$processId = Start-Process -FilePath "reg.exe" -ArgumentList "load HKU\def C:\Users\Default\NTUSER.DAT"
 
-# Write-Debug "レジストリバックアップ"
-# foreach( $item in $regEnrtyDatas ) {
-#   [String]$command = "reg.exe export HKU\" + $item[0] + " " + $regExportPath + "\"+ $item[1] + ".reg /y"
-#   try {
-#     Invoke-Expression $command
-#   } catch {
-#     Write-Debug $_.Exception
-#   }
-# }
 
 Write-Host "レジストリ削除..."
 # New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS
