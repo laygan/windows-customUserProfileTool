@@ -1,10 +1,10 @@
-﻿$ErrorActionPreference = 'Stop'
+﻿# $DebugPreference = 'inquire'
+$ErrorActionPreference = 'Stop'
 
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("Administrators")) { 
-  Write-Error "管理者でPowershellを再起動して、再度実行してください。`r`nなお、再度以下コマンドを実行する必要があります。`r`n  Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned"
+  Write-Error "管理者でPowershellを再起動して、再度実行してください。`r`nなお、再度以下コマンドを実行する必要があります。`r`n  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Unrestricted"
 }
 
-Set-Variable -Name regExportPath -Value C:\copyUserProfile
 Set-Variable -Name templateUserProfile -Value C:\Users\template
 
 [string[][]]$regEnrtyDatas = @()
@@ -58,27 +58,21 @@ Write-Host "ユーザープロファイル基本ファイルのコピー..."
 Copy-Item -Recurse $templateUserProfile "C:\Users\Default" -ErrorAction SilentlyContinue
 Write-Host "ユーザープロファイル基本ファイルのコピーが完了しました。"
 
-# Write-Debug "レジストリバックアップのフォルダ作成"
-# if (! (Test-Path -Path $regExportPath) ) {
-#   New-Item -ItemType Direory -Path $regExportPath
-# }
+Write-Host "テンプレートユーザレジストリハイブのロード..."
+$process = Start-Process -FilePath "reg.exe" -ArgumentList "load HKU\def C:\Users\Default\NTUSER.DAT" -Wait -NoNewWindow -PassThru
+if ($process.ExitCode -ne 0) {
+  Write-Error "テンプレートユーザレジストリハイブのロードに失敗しました。"
+}
 
-Write-Host "テンプレートユーザレジストリハイブの展開..."
-$processId = Start-Process -FilePath "reg.exe" -ArgumentList "load HKU\def C:\Users\Default\NTUSER.DAT" -PassThru
-reg.exe load HKU\def C:\Users\Default\NTUSER.DAT
-
-# Write-Debug "レジストリバックアップ"
-# foreach( $item in $regEnrtyDatas ) {
-#   [String]$command = "reg.exe export HKU\" + $item[0] + " " + $regExportPath + "\"+ $item[1] + ".reg /y"
-#   try {
-#     Invoke-Expression $command
-#   } catch {
-#     Write-Debug $_.Exception
-#   }
-# }
+Write-Host "PSDriveの確認と作成"
+if (! (Get-PSDrive HKU -ErrorAction SilentlyContinue)) {
+  New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS
+} else {
+  Write-Debug "PSDrive HKUはすでに存在します。"
+}
 
 Write-Host "レジストリ削除..."
-# New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS
+$regErr = 0
 foreach( $item in $regEnrtyDatas ) {
   [String]$regPath = "HKU:" + $item[0] + "*"
 
@@ -86,18 +80,21 @@ foreach( $item in $regEnrtyDatas ) {
     # Write-Debug "Remove-Item -Path $($regPath) -Recurse"
     Remove-Item -Path $regPath -Recurse
   } catch {
-    Write-Debug "Remove-Item -Path $($regPath) -Recurse\r\n$($_.Exception.Message)"
+    Write-Debug "Remove-Item -Path $($regPath) -Recurse`r`n$($_.Exception.Message)"
+    $regErr++
   }
 }
 
-try {
-  Stop-Process -Id $processId
-} catch {
-  Write-Debug $_.Exception
+if ( $regErr -eq $regEnrtyDatas.Length ) {
+  Write-Error "レジストリ削除に失敗しました。"
 }
 
-Write-Host "レジストリハイブセーブ..."
-reg.exe unload HKU\def
-
+Write-Host "レジストリハイブアンロード..."
+do {
+  Start-Sleep -Milliseconds 100
+  $process = Start-Process -FilePath "reg.exe" -ArgumentList "unload HKU\def" -Wait -NoNewWindow -PassThru
+} while ($process.ExitCode -ne 0)
 
 Read-Host "処理が完了しました。終了するにはEnterキーを押してください..."
+
+
